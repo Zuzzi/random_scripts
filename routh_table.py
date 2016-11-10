@@ -80,6 +80,7 @@ def main():
 			print("The system is NOT STABLE")
 	else:
 		print("The table is NOT DEFINED")
+	input('\nPress ENTER to exit..')
 			
 
 			

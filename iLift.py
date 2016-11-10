@@ -1,11 +1,28 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import datetime
-from sqlalchemy_declarative import Workout, Base
 import datetime
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from pathlib import Path
+import os
+import sys
+from sqlalchemy import Column, ForeignKey, Integer, String, Date
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy import create_engine
 
+Base = declarative_base()
+
+
+class Workout(Base):
+    __tablename__ = 'workout'
+    id = Column(Integer, primary_key=True)
+    type = Column(String(50), nullable=False)
+    volume = Column(Integer, nullable = False)
+    max_kg = Column(Integer)
+    date = Column(Date, nullable = False)
+ 
 
 def start_session():
 	engine = create_engine('sqlite:///database.db')	 
@@ -21,50 +38,94 @@ def save_workout():
 	expression_list = expression.split()
 	session = start_session()
 	new_workout = Workout(type=expression_list[0], volume = int(expression_list[1]),
-	                      max_kg = int(expression_list[2]), date = datetime.date.today())
+						  max_kg = int(expression_list[2]), date = datetime.date.today())
 	session.add(new_workout)
 	session.commit()
 	print("Workout succesfully saved!")
+	
+	
+def create_span_dates(all_workouts):
+	all_dates = []
+	for workout in all_workouts:
+		if workout.date not in all_dates:
+			all_dates.append(workout.date)
+	oldest_date = min(all_dates)
+	youngest_date = max(all_dates)
+	span_dates_list = []
+	date = oldest_date
+	while date < max(all_dates):
+		span_dates_list.append(date)
+		date += datetime.timedelta(days=5)
+	return span_dates_list
 
 
 def show_workouts():
 	session = start_session()
-	all_workouts = session.query(Workout).all()
+	#all_workouts = session.query(Workout).all()
+			
+	all_workouts = [Workout(id = 1, type = "log_lift", volume = 4000, max_kg = 45, date = datetime.date(2016, 10, 30)),
+					Workout(id = 2, type = "log_lift", volume = 4230, max_kg = 48, date = datetime.date(2016, 10, 31)),
+					Workout(id = 3, type = "log_lift", volume = 4300, max_kg = 50, date = datetime.date(2016, 11, 2)),
+					Workout(id = 4, type = "log_lift", volume = 4050, max_kg = 46, date = datetime.date(2016, 11, 6)),
+					Workout(id = 5, type = "log_lift", volume = 4203, max_kg = 47, date = datetime.date(2016, 11, 10)),
+					Workout(id = 6, type = "log_lift", volume = 4030, max_kg = 49, date = datetime.date(2016, 11, 12)),
+					Workout(id = 7, type = "bench_press", volume = 6020, max_kg = 80, date = datetime.date(2016, 11, 1)),
+					Workout(id = 8, type = "bench_press", volume = 6340, max_kg = 82, date = datetime.date(2016, 11, 3)),
+					Workout(id = 9, type = "bench_press", volume = 6200, max_kg = 80, date = datetime.date(2016, 11, 4)),
+					Workout(id = 10, type = "bench_press", volume = 6400, max_kg = 84, date = datetime.date(2016, 11, 5)),
+					Workout(id = 11, type = "bench_press", volume = 6500, max_kg = 86, date = datetime.date(2016, 11, 8)),
+					Workout(id = 12, type = "bench_press", volume = 6040, max_kg = 85, date = datetime.date(2016, 11, 9)),
+				    Workout(id = 13, type = "squat", volume = 3000, max_kg = 40, date = datetime.date(2016, 11, 13)),
+					Workout(id = 14, type = "squat", volume = 3200, max_kg = 45, date = datetime.date(2016, 11, 16)),
+					Workout(id = 15, type = "squat", volume = 3350, max_kg = 36, date = datetime.date(2016, 11, 20))]
+					
+	workout_types = []
+
+	for workout in all_workouts:
+		if workout.type not in workout_types:
+			workout_types.append(workout.type)
+	print(workout_types)
+	
 	for workout in all_workouts:
 		print("id = " + str(workout.id) + ", type = " + workout.type + ", volume = " + str(workout.volume) +
-		      ", max_kg = " + str(workout.max_kg) + ", date = " + str(workout.date))
+				  ", max_kg = " + str(workout.max_kg) + ", date = " + str(workout.date))
 	print("All workouts displayed!")
-	"""x1_list = []
-	x2_list = []
-	y1_list = []
-	y2_list = []"""
-	
-	
-	x1_list = [datetime.date(2016, 10, 30), datetime.date(2016, 10, 31), datetime.date(2016, 11, 2), datetime.date(2016, 11, 6), datetime.date(2016, 11, 10), datetime.date(2016, 11, 12)]
-	x2_list = [datetime.date(2016, 11, 1), datetime.date(2016, 11, 3), datetime.date(2016, 11, 4), datetime.date(2016, 11, 5), datetime.date(2016, 11, 8), datetime.date(2016, 11, 9)]
-	y1_list = [4000, 4230, 4300, 4050, 4203, 4030]
-	y2_list = [6020, 6340, 6200, 6400, 6500, 6040]
-	
-
-	
-
-	"""for workout in all_workouts:
-		if workout.type == "log_lift":
-			x1_list.append(workout.date)
-			y1_list.append(workout.volume)
-		elif workout.type == "bench_press":
-			x2_list.append(workout.date)
-			y2_list.append(workout.volume)
-	"""
-	
-	fig = plt.figure() 
-	fig.canvas.set_window_title('iLift') 
-	plt.plot(x1_list,y1_list, label = "log lift")
-	plt.plot(x2_list, y2_list, label = "bench press")
+		
+	plt.subplot(2, 1, 1)
+	all_x_lists = []		
+	for type in workout_types:
+		x_list = []
+		y_list = []
+		for workout in all_workouts:
+			if workout.type == type:
+				x_list.append(workout.date)
+				y_list.append(workout.volume)	
+		plt.plot(x_list,y_list, label = type)
+		plt.ylabel('Volume')
+		plt.legend(prop={'size':10})
+		all_x_lists += x_list
 	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
 	plt.gca().xaxis.set_major_locator(mdates.DayLocator())
-	plt.title('Volume')
-	plt.legend()
+	plt.xticks(create_span_dates(all_workouts))
+
+	plt.subplot(2, 1, 2)
+	all_x_lists = []
+	for type in workout_types:
+		x_list = []
+		y_list = []
+		for workout in all_workouts:
+			if workout.type == type:
+				x_list.append(workout.date)
+				y_list.append(workout.max_kg)	
+		plt.plot(x_list,y_list, label = type)
+		plt.ylabel('Max kg')
+		plt.xlabel('month/day')
+		plt.legend(prop={'size':10})
+		all_x_lists += x_list
+	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+	plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+	plt.xticks(create_span_dates(all_workouts))
+	
 	plt.show()
 	plt.gcf().autofmt_xdate()
 	print("Chart displayed!")
@@ -80,52 +141,35 @@ def delete_workout():
 	print("Workout " + input_id + " successfully deleted!")
 
 	
+def main():
+	db_file = Path("/database.db")
+	if not db_file.is_file():
+		engine = create_engine('sqlite:///database.db')
+		Base.metadata.create_all(engine)	
+	running = True
+	print("BIG_volume SOFTWARE")
+	print("1) show my workouts")
+	print("2) save workout")
+	print("3) delete workout")
+	print("4) exit program")
+	while(running):
+		print("Type an option..")
+		choice = input()
+		if choice == "1":
+			show_workouts()
+		elif choice == "2":
+			save_workout()
+		elif choice == "3":
+			delete_workout()
+		elif choice == "4":
+			running = False
+		elif choice == "load":
+			pass		
+		else:
+			print("Wrong number!")
 
-	
-running = True
-print("BIG_volume SOFTWARE")
-print("1) show my workouts")
-print("2) save workout")
-print("3) delete workout")
-print("4) exit program")
-while(running):
-	print("Type an option..")
-	choice = input()
-	if choice == "1":
-		show_workouts()
-	elif choice == "2":
-		save_workout()
-	elif choice == "3":
-		delete_workout()
-	elif choice == "4":
-		running = False
-	elif choice == "load":
-		pass
-		"""
-		session = start_session()
-		volume1 = 4232
-		volume2 = 6696
-		volume3 = 4268
-		max1 = 48
-		max2 = 84
-		max3 = 46
-		date1 = datetime.date(2016, 10, 30)
-		date2 = datetime.date(2016, 11, 1)
-		date3 = datetime.date(2016, 11, 3)
-		
-		workout1 = Workout(type = "log_lift", volume = volume1, max_kg = max1, date = date1 )
-		workout2 = Workout(type = "bench_press", volume = volume2, max_kg = max2, date = date2)
-		workout3 = Workout(type = "log_lift", volume = volume3, max_kg = max3, date = date3)
-		
-		session.add(workout1)
-		session.add(workout2)
-		session.add(workout3)
-		
-		session.commit()
-		
-		print("Data loaded!")  """
-		
-	else:
-		print("Wrong number!")
+
+if __name__ == "__main__":
+    main()
 
 	
