@@ -30,6 +30,24 @@ def start_session():
 	DBSession = sessionmaker(bind = engine)
 	session = DBSession()
 	return session
+
+
+
+def load_from_txt():
+		data = []
+		session = start_session()
+		with open("load.txt", "rt") as f:
+			for line in f:
+				data.append(line.strip().split())
+			for word in data:
+				w = Workout(type = word[0], volume = int(word[1]), max_kg = int(word[2]), date = datetime.date(int(word[3]), int(word[4]), int(word[5])))
+				session.add(w)
+		session.commit()
+		print("Workouts successfully added from load.txt!")
+
+	
+
+
 	
 
 def save_workout():
@@ -46,41 +64,26 @@ def save_workout():
 	
 def create_span_dates(all_workouts):
 	all_dates = []
-	for workout in all_workouts:
-		if workout.date not in all_dates:
-			all_dates.append(workout.date)
-	oldest_date = min(all_dates)
-	youngest_date = max(all_dates)
 	span_dates_list = []
-	date = oldest_date
-	while date < max(all_dates):
-		span_dates_list.append(date)
-		date += datetime.timedelta(days=5)
+	try:
+		for workout in all_workouts:
+			if workout.date not in all_dates:
+				all_dates.append(workout.date)
+		oldest_date = min(all_dates)
+		youngest_date = max(all_dates)
+		date = oldest_date
+		while date < max(all_dates):
+			span_dates_list.append(date)
+			date += datetime.timedelta(days=5)
+	except:
+		span_dates_list = []
 	return span_dates_list
 
 
 def show_workouts():
 	session = start_session()
-	#all_workouts = session.query(Workout).all()
-			
-	all_workouts = [Workout(id = 1, type = "log_lift", volume = 4000, max_kg = 45, date = datetime.date(2016, 10, 30)),
-					Workout(id = 2, type = "log_lift", volume = 4230, max_kg = 48, date = datetime.date(2016, 10, 31)),
-					Workout(id = 3, type = "log_lift", volume = 4300, max_kg = 50, date = datetime.date(2016, 11, 2)),
-					Workout(id = 4, type = "log_lift", volume = 4050, max_kg = 46, date = datetime.date(2016, 11, 6)),
-					Workout(id = 5, type = "log_lift", volume = 4203, max_kg = 47, date = datetime.date(2016, 11, 10)),
-					Workout(id = 6, type = "log_lift", volume = 4030, max_kg = 49, date = datetime.date(2016, 11, 12)),
-					Workout(id = 7, type = "bench_press", volume = 6020, max_kg = 80, date = datetime.date(2016, 11, 1)),
-					Workout(id = 8, type = "bench_press", volume = 6340, max_kg = 82, date = datetime.date(2016, 11, 3)),
-					Workout(id = 9, type = "bench_press", volume = 6200, max_kg = 80, date = datetime.date(2016, 11, 4)),
-					Workout(id = 10, type = "bench_press", volume = 6400, max_kg = 84, date = datetime.date(2016, 11, 5)),
-					Workout(id = 11, type = "bench_press", volume = 6500, max_kg = 86, date = datetime.date(2016, 11, 8)),
-					Workout(id = 12, type = "bench_press", volume = 6040, max_kg = 85, date = datetime.date(2016, 11, 9)),
-				    Workout(id = 13, type = "squat", volume = 3000, max_kg = 40, date = datetime.date(2016, 11, 13)),
-					Workout(id = 14, type = "squat", volume = 3200, max_kg = 45, date = datetime.date(2016, 11, 16)),
-					Workout(id = 15, type = "squat", volume = 3350, max_kg = 36, date = datetime.date(2016, 11, 20))]
-					
+	all_workouts = session.query(Workout).all()
 	workout_types = []
-
 	for workout in all_workouts:
 		if workout.type not in workout_types:
 			workout_types.append(workout.type)
@@ -90,7 +93,6 @@ def show_workouts():
 		print("id = " + str(workout.id) + ", type = " + workout.type + ", volume = " + str(workout.volume) +
 				  ", max_kg = " + str(workout.max_kg) + ", date = " + str(workout.date))
 	print("All workouts displayed!")
-		
 	plt.subplot(2, 1, 1)
 	all_x_lists = []		
 	for type in workout_types:
@@ -107,7 +109,6 @@ def show_workouts():
 	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
 	plt.gca().xaxis.set_major_locator(mdates.DayLocator())
 	plt.xticks(create_span_dates(all_workouts))
-
 	plt.subplot(2, 1, 2)
 	all_x_lists = []
 	for type in workout_types:
@@ -125,7 +126,6 @@ def show_workouts():
 	plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
 	plt.gca().xaxis.set_major_locator(mdates.DayLocator())
 	plt.xticks(create_span_dates(all_workouts))
-	
 	plt.show()
 	plt.gcf().autofmt_xdate()
 	print("Chart displayed!")
@@ -140,6 +140,15 @@ def delete_workout():
 	session.commit()
 	print("Workout " + input_id + " successfully deleted!")
 
+
+def delete_all_workouts():
+	session = start_session()
+	workouts = session.query(Workout).all()
+	for w in workouts:
+		session.delete(w)
+	session.commit()
+	print("All workouts succesfully deleted!")
+
 	
 def main():
 	db_file = Path("/database.db")
@@ -151,7 +160,9 @@ def main():
 	print("1) show my workouts")
 	print("2) save workout")
 	print("3) delete workout")
-	print("4) exit program")
+	print("4) load workouts from load.txt file")
+	print("5) delete all workouts")
+	print("6) exit program")
 	while(running):
 		print("Type an option..")
 		choice = input()
@@ -162,9 +173,16 @@ def main():
 		elif choice == "3":
 			delete_workout()
 		elif choice == "4":
-			running = False
-		elif choice == "load":
-			pass		
+			load_from_txt()
+		elif choice == "5":
+			print("Do you want to delete all the workouts?(y/n)")
+			sure_choice = input()
+			while sure_choice != "y" and sure_choice != "n":
+				sure_choice = input()
+			if sure_choice == "y":
+				delete_all_workouts()
+		elif choice == "6":
+			running = False		
 		else:
 			print("Wrong number!")
 
